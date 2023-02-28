@@ -1,0 +1,79 @@
+Plaiasu Iulia-Silvia - PCOM (Communication Networks) homework.
+Non-python code outside the include folder is mine.
+In this homework I had to implement the dataplane of a router.
+
+
+Nearly everywhere I tried to not create new packets but
+to keep modifying one packet. The solution has these parts:
+
+main:
+I mostly read the ether header in main. I check if the packet is
+for the router itself or if it's a broadcast by verifying the 2 MACs
+(the router's and the packet's destination's). I then further split
+the solution on whether the packet is IP or ARP.
+
+IP:
+    The IP cares about if it's for him or broadcast. If it's none, it
+    ignores it. Otherwise it continues with the forward_ip process which
+    tries to create everything that's necessary for the ip header. If
+    it can be created, it calls do_arp, which checks thetable and
+    if there is no entry it also creates an arp request and sends it. 
+
+    forward_ip:
+        Checks checksum (if it's not good, the packet gets ignored).
+        It updates TTL and checksum with a formula. If TTL is a bad
+        number then it creates a special icmp packet with create_error_icmp
+        for TIMEOUT and then it takes next_hop with best_route_search. 
+        Returns a boolean for if it can send anything.
+
+    best_route_search:
+        Uses binary search (binary_search) in order to get in O(log N)
+        next_hop. If it can't find anything then it changes and creates
+        an icmp packet with create_error_icmp for Destination Unreachable.
+    
+LPM:
+    rtable_comp:
+        Used at the beginning of main in order to sort by prefix size
+        (including how much does the netmask say the prefix is). This
+        step is necessary for the binary search.
+
+    binary_search: 
+        Returns the biggest entry for which the prefix is equal to the mask
+        of the searched element. Besides that, it's nearly a classical
+        implementation. It has to be careful however that if there is no
+        entry it has to return nothing.
+
+ICMP:
+    create_error_icmp:
+        Literally only copies in the given packet data about the error:
+        the type of error (either Destination unreachable or timeout),
+        the checksum of the new header, changes the protocol, the addreses
+        and ttl from ip, and is careful to modify the lengths accordingly.
+        It also copies what was in icmp when the error was produced.
+
+    create_echo_reply:
+        Similar with create_error_icmp, but for echo reply. It also
+        has to modify some bits not used by create_error_icmp.
+
+ARP:
+    in main:
+        If it finds an ARP request destined to the router, it sends a
+        simple reply and saves the addresses.
+        Otherwise it searches for the messages in the queue that need
+        the IP in ARP to be sent.
+        It goes through queue_deq. The elements that it can't send but
+        are removed from the queue are put in a new queue.
+        In the end it changes the old queue to the new queue.
+
+    create_arp:
+        Literally creates an ethernet packet with header_arp and
+        everything else that is necessary for an ARP request.
+
+    do_arp:
+        It checks the arp queue. If it finds the entry with the ip of
+        the next_hop it updates all the MACs in the ethernet header.
+        It also updates the interface. Otherwise it gets saved in
+        the queue (together with best, which contains the next hop),
+        Finally, it creates a packet with create_arp and sends it.
+        
+bonus: Simply uses the given formula when needed.

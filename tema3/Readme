@@ -1,0 +1,111 @@
+Plaiasu Iulia-Silvia
+All the code is mine. This was the third homework
+of the Communication Networks class.
+In this homework I had to implement a REST client that reads JSONs. The
+server is most likely no longer online.
+
+I used Nlohmann as the client is not an app that has to be fast, as it's
+used by a normal (human) user, which will not be bothered by the small
+performance issues the library will cause. Nlohmann is more intuitive to
+use than other libraries I saw.
+
+The files I created for this homework:
+
+helpers.cpp: Taken partially from the labs, I added
+get_response_code - takes the code from the response
+get_response_body - takes the body's response
+
+and I modified basic_extract_json_response so that it is careful of 
+the case in which I receive an array instead of an object so that the
+first character is [. I also made it go to the body with get_response_body,
+in order to skip the header easily.
+
+requests.cpp: Taken from the lab, a little modified with a new DELETE request
+and modularised so that they all use the same kind of function, compute_rest_request.
+
+client.cpp: written from scratch. I put all the necessary information of a client
+in a structure: the socket, if it's logged in, cookies, jwt token.
+
+
+
+Helper functions:
+
+init: A function which begins the connection to the server.
+trim: A function which cleans \r and \n at the end if they exist
+read_field: a function which helps with the input the user needs to write:
+asks from the user (for example, at login a field is username) and writes
+it into a json (I decided json because that's the final format). It is
+careful that if it's too big to ignore the input and tell the user that.
+
+to_cstring: A helper function which takes a field from a json and turns it
+into a C-style string. I need the functions from the lab, which need C-style
+strings.
+
+ask_user: Reads the fields necessary from the user (both login and register
+have the same fields: username si password) and validates them to not
+have spaces or be empty.
+
+deal_with_error_code: If the response came with a code that simbolises an
+error, I noticed the server sends it in jsons usually.
+Then I take it from there. Otherwise, if it's not there, I show the whole
+response.
+
+has_set_cookie: Checks if a Set-Cookie header exists.
+
+set_cookie: Takes the cookie from Set-Cookie. Given the server documentation
+I did no further verifications. (I know Set-Cookie can appear multiple times).
+I only took until the first ;, as the rest are attributes and are not required
+for us.
+
+receive_certain_message: A function that wraps around the fact a connection
+can close. Sends a message and if it doesn't receive a response, it sends
+another time. Adds a small 0.1s delay, which isn't observable for thte user,
+in order to not overwhelm the server.
+
+verify_library: It announces the user if it has access to the library and
+if it doesn't, tells them how to acquire it.
+
+get_int_field: Reads and validates an int field. An int field has to have
+only digits, and returns -1 if it doesn't, or if it doesn't fit in int.
+
+ask_book_id: Reads from the json an id, for the commands that only require that.
+
+ask_add_book: Writes to a json all the neccessary fields in order to add a book,
+doing all the required validations.
+
+
+
+Direct functions the users calls:
+
+register_client: Reads from a json with ask_user and then makes a
+POST. Then reads the response.
+
+login: Is careful not to login if it's logged in. Again, makes
+ask_user and then sends a post. Reads the response and modifies
+accordingly the logged_in in the client.
+
+enter_library: Warns the user if the library is already accessed or if
+they are not logged in. Makes a GET without parameters and reads the JWT from
+the client, if no error was produced (in which case the user gets announced).
+
+get_books: Verifies if the user is capable to do so. Makes a
+GET without parameters and parses and shows in a "readable format" the JSON
+from the response, if no error was produced (in which case the user gets announced).
+
+get_book: Verifies if the user has the permission. Reads from the user
+with ask_book_id. Makes a GET without paramaters, but to an URL which contains
+the id. Shows the book in great detail in a "readable format", if no error was
+produced (in which case the user gets announced).
+
+add_book: Verifies if the user has the permission. Reads from the user with ask_add_book.
+Makes a POST with the given json and announces if an error was produced.
+
+delete_book: Verifies if the user has the permission. Reads from the user with ask_book_id.
+Makes a DELETE at a link which contains the ID and announces if an error was produced.
+
+logout: Verifies if the user is logged in:
+"Log in you must, in order to log out!" ;)
+Make a GET without parameters, shows if an error was produced. If it's ok,
+wipes from memory the cookies and the JWT token.
+
+client_exit: Closes the app and connection, deallocating the used memory.
